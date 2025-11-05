@@ -97,29 +97,56 @@ async def chat(request: ChatRequest):
 @app.post("/api/upload-document")
 async def upload_document(file: UploadFile = File(...)):
     try:
-        # Read file content
+        # Validate file
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
+        
+        # Check file size (limit to 50MB)
         content = await file.read()
+        if len(content) > 50 * 1024 * 1024:  # 50MB
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB")
+        
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="File is empty")
+        
+        logger.info(f"Processing file: {file.filename} ({len(content)} bytes)")
         
         # Process document
-        chunks = document_processor.process_file(file.filename, content)
+        try:
+            chunks = document_processor.process_file(file.filename, content)
+        except Exception as e:
+            logger.error(f"Error processing document: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Error processing document: {str(e)}")
+        
+        if not chunks or len(chunks) == 0:
+            raise HTTPException(status_code=400, detail="No text could be extracted from the document")
+        
+        logger.info(f"Document processed into {len(chunks)} chunks")
         
         # Add to vector store
         if rag_engine.is_ready():
-            rag_engine.add_documents(chunks)
-            return {
-                "status": "success",
-                "message": f"Document processed and added to knowledge base. {len(chunks)} chunks created.",
-                "chunks": len(chunks)
-            }
+            try:
+                rag_engine.add_documents(chunks)
+                return {
+                    "status": "success",
+                    "message": f"Document processed and added to knowledge base. {len(chunks)} chunks created.",
+                    "chunks": len(chunks)
+                }
+            except Exception as e:
+                logger.error(f"Error adding to vector store: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Error adding to vector store: {str(e)}")
         else:
+            logger.warning("RAG engine not ready, document chunks prepared but not added to vector DB")
             return {
                 "status": "warning",
-                "message": "Document chunks prepared but not added to vector DB. Please configure LLM first.",
+                "message": f"Document processed into {len(chunks)} chunks, but not added to vector DB. Please configure LLM first.",
                 "chunks": len(chunks)
             }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error uploading document: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error uploading document: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error uploading document: {str(e)}")
 
 @app.get("/api/knowledge-base/status")
 async def get_knowledge_base_status():

@@ -35,13 +35,23 @@ class DocumentProcessor:
         """Process PDF file"""
         try:
             from pypdf import PdfReader
+        except ImportError:
+            raise ImportError("pypdf not installed. Install: pip install pypdf")
+        
+        try:
             pdf_reader = PdfReader(BytesIO(content))
             text = ""
             for page in pdf_reader.pages:
                 text += page.extract_text() + "\n"
+            
+            if not text.strip():
+                logger.warning("PDF file appears to be empty or contains no extractable text")
+                return []
+            
             return self._chunk_text(text)
-        except ImportError:
-            raise ImportError("pypdf not installed. Install: pip install pypdf")
+        except Exception as e:
+            logger.error(f"Error reading PDF: {e}")
+            raise ValueError(f"Error processing PDF file: {str(e)}")
     
     def _process_docx(self, content: bytes) -> List[str]:
         """Process DOCX file"""

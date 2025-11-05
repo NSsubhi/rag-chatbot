@@ -86,6 +86,8 @@ with st.sidebar:
         if st.button("📤 Upload & Process"):
             with st.spinner("Processing document..."):
                 try:
+                    # Reset file pointer to beginning
+                    uploaded_file.seek(0)
                     files = {'file': (uploaded_file.name, uploaded_file.read(), uploaded_file.type)}
                     response = requests.post(
                         f"{API_URL}/api/upload-document",
@@ -95,14 +97,24 @@ with st.sidebar:
                     if response.status_code == 200:
                         result = response.json()
                         st.success(result['message'])
+                        # Show chunk count if available
+                        if 'chunks' in result:
+                            st.info(f"Created {result['chunks']} text chunks")
                     else:
-                        st.error("Upload failed")
+                        # Try to get error message from response
+                        try:
+                            error_detail = response.json().get('detail', 'Unknown error')
+                            st.error(f"Upload failed: {error_detail}")
+                        except:
+                            st.error(f"Upload failed with status {response.status_code}: {response.text}")
                 except requests.exceptions.Timeout:
                     st.error("Upload timed out. Please try again.")
                 except requests.exceptions.ConnectionError:
-                    st.error("Cannot connect to API. Make sure backend is running.")
+                    st.error("Cannot connect to API. Make sure backend is running on http://localhost:8000")
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
     
     st.markdown("---")
     st.info("💡 Tip: Upload documents first, then ask questions about them!")

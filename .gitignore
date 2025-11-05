@@ -9,18 +9,35 @@ env/
 ENV/
 .venv
 
-# Environment
+# Environment variables (IMPORTANT: Contains API keys)
 .env
 .env.local
+.env.*.local
+*.env
 
 # Vector DB
 chroma_db/
+data/
+*.db
+*.sqlite
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
 
