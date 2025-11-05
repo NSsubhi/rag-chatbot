@@ -1,0 +1,7 @@
+OPENAI_API_KEY=your-key
+CHROMA_DB_PATH=./data/chroma
+UPLOAD_DIR=./data/uploads
+MODEL_NAME=gpt-3.5-turbo
+EMBEDDING_MODEL=text-embedding-ada-002
+API_URL=http://localhost:8000
+
